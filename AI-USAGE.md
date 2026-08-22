@@ -1,12 +1,21 @@
 Tools Used:
-
 -> AI Assistant : Gemini
--> IDE : Antigravity IDE
+-> IDE : Antigravity IDE / VS Code
 
 Log Usage:
 
-1. Used Gemini for:
-    -> Architecting the file structure of an agent (how an agent should be )
-    -> Conversion of Raw Markdown to JSON format : authority-policy.json
-    -> To get correct input from http request : Client.py
-    -> To create a policy checker : guardrail.py
+1. Architecture & Repository Design:
+    -> Structuring decoupled repository boundaries (data/, services/, src/, tests/)
+    -> Creating standalone file registry (FILE_DOCUMENTATION.txt)
+
+2. Policy & Schema Engineering:
+    -> Converting raw ACA-2026/1 Markdown policy into declarative JSON rules (data/authority-policy.json)
+    -> Mapping Section 2 permitted actions and Section 3 restricted trigger keywords
+
+3. Application Logic & Guardrails:
+    -> Implementing standard library HTTP client (src/client.py) with timeout and error handling
+    -> Writing deterministic guardrail interceptor (src/guardrail.py) evaluating Section 3 restrictions and Section 6.1 escalation rules
+    -> Creating 3-step morning intake runner (src/main.py) with real-time execution trace logging
+
+4. Verification & Validation:
+    -> All generated code and schemas were manually reviewed, executed against local mock services on port 8083, and verified for compliance with the hackathon floor criteria.
