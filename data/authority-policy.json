@@ -1,0 +1,92 @@
+{
+  "policy_reference": "ACA-2026/1",
+  "policy_title": "Automated Casework Assistant: Authority Policy",
+  "effective_date": "2026-03-01",
+  "section_2_permitted_actions": [
+    {
+      "clause": "2.1",
+      "action": "read_overnight_queue",
+      "description": "Read a referral from the overnight queue"
+    },
+    {
+      "clause": "2.2",
+      "action": "retrieve_resident_history",
+      "description": "Retrieve a resident's history, household composition, and case events"
+    },
+    {
+      "clause": "2.3",
+      "action": "categorise_prioritise",
+      "description": "Categorise or prioritise a referral"
+    },
+    {
+      "clause": "2.4",
+      "action": "draft_triage_note",
+      "description": "Draft a non-binding triage note proposal for caseworker review"
+    },
+    {
+      "clause": "2.5",
+      "action": "record_triage_status",
+      "description": "Record that a referral has been read and triaged"
+    },
+    {
+      "clause": "2.6",
+      "action": "flag_human_attention",
+      "description": "Flag a referral for human attention or urgent review"
+    },
+    {
+      "clause": "2.7",
+      "action": "escalate_unauthorised_action",
+      "description": "Identify out-of-authority actions and escalate under Section 4"
+    }
+  ],
+  "section_3_restrictions": [
+    {
+      "clause": "3.1",
+      "restriction_id": "entitlement_or_eligibility_change",
+      "description": "Any change to a resident's entitlement, award amount, or eligibility status",
+      "match_triggers": ["change entitlement", "alter eligibility", "recalculate award directly", "adjust award"]
+    },
+    {
+      "clause": "3.2",
+      "restriction_id": "award_suspension_or_reinstatement",
+      "description": "Suspension, termination, or reinstatement of an award",
+      "match_triggers": ["suspend", "suspension", "terminate", "termination", "reinstate", "reinstatement"]
+    },
+    {
+      "clause": "3.3",
+      "restriction_id": "payment_initiation_or_cancellation",
+      "description": "Initiation, alteration, or cancellation of a payment",
+      "match_triggers": ["issue payment", "cancel payment", "alter payment", "trigger payment"]
+    },
+    {
+      "clause": "3.4",
+      "restriction_id": "payment_details_modification",
+      "description": "Any change to payment details, including bank or card details",
+      "match_triggers": ["update payment details", "change bank", "change account", "bank details", "card details", "payment details"]
+    },
+    {
+      "clause": "3.5",
+      "restriction_id": "external_communication",
+      "description": "Any communication sent to a resident or third party",
+      "match_triggers": ["send communication", "send email", "send letter", "dispatch notice", "notify resident directly"]
+    },
+    {
+      "clause": "3.6",
+      "restriction_id": "external_disclosure",
+      "description": "Disclosure of resident information outside the Department",
+      "match_triggers": ["disclose information", "share data externally", "send to external party"]
+    },
+    {
+      "clause": "3.7",
+      "restriction_id": "assertion_of_conduct_or_fraud",
+      "description": "Creation of a record that asserts a finding of fact about conduct or fraud",
+      "match_triggers": ["fraud", "misrepresentation", "undeclared employment", "investigation finding", "suspected fraud"]
+    },
+    {
+      "clause": "3.8",
+      "restriction_id": "irreversible_actions",
+      "description": "Any action which cannot be reversed by the Department acting alone",
+      "match_triggers": ["irreversible action", "external system wipe", "permanent deletion"]
+    }
+  ]
+}
