@@ -4,4 +4,5 @@
 
 Format of Log : [HH : MM] - [ Decision Taken : Why Taken]
 
-19:25 - Created AI-USAGE and Decisions File and commited
+19:25 - Created AI-USAGE and Decisions File 
+19:50 - Added the data packs from the zip file given by Brite accordingly to the structure 
