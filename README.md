@@ -46,19 +46,19 @@ This implementation satisfies all mandatory criteria established for Problem Tra
 
 ```mermaid
 flowchart TD
-    A["Overnight Referral Queue\n(data/referral-queue.json)"] --> B["CLI Intake Orchestrator\n(src/main.py)"]
+    A["Overnight Referral Queue<br/>(data/referral-queue.json)"] --> B["CLI Intake Orchestrator<br/>(src/main.py)"]
     B --> Step1["Step 1: Fetch History Profile"]
-    Step1 --> C["Resident History API Client\n(src/client.py)"]
-    C -->|HTTP GET :8083| D["Mock Resident History Server\n(services/history_service.py)"]
-    D -->|JSON Profile Data| C
+    Step1 --> C["Resident History API Client<br/>(src/client.py)"]
+    C -->|"HTTP GET :8083"| D["Mock Resident History Server<br/>(services/history_service.py)"]
+    D -->|"JSON Profile Data"| C
     C --> Step2["Step 2: Policy Interceptor Gate"]
-    Step2 --> E["Policy Guardrail Engine\n(src/guardrail.py)"]
-    E <-->|Evaluate Rules| F["Declarative Policy Schema\n(data/authority-policy.json)"]
-    E --> Decision{"Policy Check\nOutcome"}
+    Step2 --> E["Policy Guardrail Engine<br/>(src/guardrail.py)"]
+    E <-->|"Evaluate Rules"| F["Declarative Policy Schema<br/>(data/authority-policy.json)"]
+    E --> Decision{"Policy Check<br/>Outcome"}
     
-    Decision -->|PERMITTED\n(Section 2.4)| Step3A["Step 3A: Draft Non-Binding Triage Proposal"]
-    Decision -->|CASEWORKER HAND-OFF\n(Section 3.9 Safeguarding)| Step3B["Step 3B: Hand-Off Case Context (No Draft Note)"]
-    Decision -->|SUPERVISOR ESCALATION\n(Section 3.1 - 3.8)| Step3C["Step 3C: Block & Generate Supervisor Escalation Package"]
+    Decision -->|"PERMITTED<br/>(Section 2.4)"| Step3A["Step 3A: Draft Non-Binding Triage Proposal"]
+    Decision -->|"CASEWORKER HAND-OFF<br/>(Section 3.9 Safeguarding)"| Step3B["Step 3B: Hand-Off Case Context (No Draft Note)"]
+    Decision -->|"SUPERVISOR ESCALATION<br/>(Section 3.1 - 3.8)"| Step3C["Step 3C: Block & Generate Supervisor Escalation Package"]
     
     Step3A --> G["Caseworker Inspection Log (stdout)"]
     Step3B --> G
@@ -110,7 +110,32 @@ python -m src.main
 python -m unittest discover tests
 ```
 
-> **For complete file-by-file testing command lines and a wireframe workflow diagram, consult [`testing.txt`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/testing.txt).**
+---
+
+### Comprehensive File-by-File Testing Manual (`testing.txt`)
+
+For evaluators and developers wishing to test individual files independently, inspect data schemas, or execute full automated verification, refer to [`testing.txt`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/testing.txt). It provides a complete environment setup guide, an ASCII wireframe workflow diagram, and file-by-file test commands.
+
+#### Quick Reference: Test Commands by File
+
+| File Target | Technical Role | Dedicated Command Line |
+| :--- | :--- | :--- |
+| **`services/history_service.py`** | REST API Microservice (Port 8083) | `python services/history_service.py --port 8083` |
+| **`services/history_service.py`** | Health Endpoint Check | `python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8083/health').read().decode())"` |
+| **`data/authority-policy.json`** | Policy JSON Schema Validation | `python -m json.tool data/authority-policy.json > NUL && echo "VALID"` |
+| **`data/referral-queue.json`** | Overnight Queue Integrity | `python -c "import json; q=json.load(open('data/referral-queue.json')); print(f'Loaded {len(q)} referrals')"` |
+| **`src/client.py`** | HTTP Transport Client | `python -c "from src.client import ResidentHistoryClient; c = ResidentHistoryClient(); print(c.check_health())"` |
+| **`src/guardrail.py`** | Policy Interceptor Engine | `python -c "from src.guardrail import PolicyGuardrailEngine; g = PolicyGuardrailEngine(); print(g.evaluate({'requested_action': 'suspend'}))"` |
+| **`src/main.py`** | CLI Morning Intake Orchestrator | `python -m src.main` |
+| **`tests/test_guardrails.py`** | Zero-Dependency Test Suite | `python -m unittest discover tests` |
+
+#### Automated Full System Verification One-Liner
+To execute a complete end-to-end verification check across all codebase files in a single terminal line:
+```bash
+python -c "import unittest, json, os; from src.client import ResidentHistoryClient; from src.guardrail import PolicyGuardrailEngine; print('[1/4] Checking Data Files...'); assert os.path.exists('data/authority-policy.json') and os.path.exists('data/referral-queue.json'); print('[2/4] Testing Policy Engine...'); g = PolicyGuardrailEngine(); assert g.evaluate({'requested_action': 'suspend'}).requires_escalation; print('[3/4] Testing History API Client...'); c = ResidentHistoryClient(); print('      API Status:', c.check_health().get('status')); print('[4/4] Running Unit Tests...'); loader = unittest.TestLoader(); suite = loader.discover('tests'); runner = unittest.TextTestRunner(); result = runner.run(suite); assert result.wasSuccessful(), 'Tests failed!'; print('\n[SUCCESS] ALL SYSTEM VERIFICATION CHECKS PASSED!')"
+```
+
+---
 
 #### Sample Execution Trace Output Excerpt
 ```text

@@ -25,7 +25,7 @@ DAY-2:
     2. Test with dummy data representing a household with a minor
 20:00 - Updated tests to include new conditions for ACA-2026/2
 20:05 - Tested all conditions and edge cases and everything was working as expected. Implemented a full system verification script in testing.txt
-
+22:22 - Found there was a slight error in creating the flowchart for the repository in the Readme File.
 
 3. Structural Incapability: What the Agent Cannot Do & How We Know
 
