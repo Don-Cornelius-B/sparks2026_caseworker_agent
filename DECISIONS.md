@@ -18,6 +18,7 @@ DAY-1 :
 DAY-2:
 14:10 - Recieved Challenge at 10:00 and checked the existing codebase to see if major changes are needed.
 14:40 - Concluded that Minor changes are enough since the existing codebase on how input is processed is dynamic enough to handle the new requirements.
+15:30 - Updated guardrail.py for Amendment ACA-2026/2 : Implemented dynamic date_of_birth evaluation across household records to detect minors under 18 as of 17 March 2026, establishing distinct caseworker hand-off decisions separate from supervisor escalations.
 
 
 3. Structural Incapability: What the Agent Cannot Do & How We Know
