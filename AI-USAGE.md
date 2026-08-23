@@ -21,4 +21,4 @@ Log Usage:
     -> Updating src/main.py to pass retrieved history context to the guardrail engine and render 3-way triage, hand-off, and escalation outputs
 
 4. Verification & Validation:
-    -> All generated code and schemas were manually reviewed, executed against local mock services on port 8083, and verified for compliance with the hackathon floor criteria.
+    -> All generated code and schemas were manually reviewed, executed against local mock services on port 8083, unittest and verified for compliance with the hackathon floor criteria.

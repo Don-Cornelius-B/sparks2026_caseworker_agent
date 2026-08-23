@@ -20,6 +20,9 @@ DAY-2:
 14:40 - Concluded that Minor changes are enough since the existing codebase on how input is processed is dynamic enough to handle the new requirements.
 15:30 - Updated guardrail.py for Amendment ACA-2026/2 : Implemented dynamic date_of_birth evaluation across household records to detect minors under 18 as of 17 March 2026, establishing distinct caseworker hand-off decisions separate from supervisor escalations.
 15:50 - Updated main.py for 3-way outcome routing : Implemented distinct branches for Permitted Triage Drafts (Sec 2.4), Caseworker Hand-offs for minor safeguarding (Sec 3.9), and Supervisor Escalations (Sec 3.1-3.8), preserving retrieved context without note generation on hand-offs.
+17:10 - Created Unittest to test all the conditions and Edge cases:
+    1. Test with dummy data representing an adult-only household
+    2. Test with dummy data representing a household with a minor
 
 
 3. Structural Incapability: What the Agent Cannot Do & How We Know
