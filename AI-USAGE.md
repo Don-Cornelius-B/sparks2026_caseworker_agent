@@ -1,6 +1,6 @@
 Tools Used:
 -> AI Assistant : Gemini
--> IDE : Antigravity IDE / VS Code
+-> IDE : Antigravity IDE 
 
 Log Usage:
 
@@ -9,7 +9,8 @@ Log Usage:
     -> Creating standalone file registry (FILE_DOCUMENTATION.txt)
 
 2. Policy & Schema Engineering:
-    -> Converting raw ACA-2026/1 Markdown policy into declarative JSON rules (data/authority-policy.json)
+    -> Converting raw ACA-2026/1 Markdown policy into declarative JSON rules (data/authority-policy.json)(this approach led to easy addition of new rules in surprise challenge)
+    -> Updating schema for Amendment ACA-2026/2 (Section 3.9) to distinguish caseworker hand-offs from supervisor escalations
     -> Mapping Section 2 permitted actions and Section 3 restricted trigger keywords
 
 3. Application Logic & Guardrails:

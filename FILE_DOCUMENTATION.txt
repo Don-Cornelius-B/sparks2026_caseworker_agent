@@ -1,0 +1,72 @@
+================================================================================
+CALDER COUNTY AUTOMATED CASEWORKER ASSISTANT — FILE REGISTRY & DOCUMENTATION
+================================================================================
+
+This document details the precise role, structural boundaries, and interactions of
+every file in the `sparks2026_caseworker_agent` repository.
+
+--------------------------------------------------------------------------------
+1. DOCUMENTATION & GOVERNANCE FILES
+--------------------------------------------------------------------------------
+- README.md
+  The primary technical overview and execution guide for judges, caseworkers, and system
+  administrators. Fully addresses problem scope, architectural design, local run steps,
+  production deployment strategies, architectural trade-offs, and future improvements.
+
+- DECISIONS.md
+  Chronological architectural decision log detailing key choices (Problem 5 track,
+  Policy-as-Data schema, standard library HTTP transport, fault isolation) and explicit
+  declarations of Structural Incapability (what the agent cannot do and how it is enforced).
+
+- AI-USAGE.md
+  Mandatory AI disclosure log recording the exact use of Gemini AI assistants in system
+  design, policy JSON schema translation, code generation, and verification.
+
+- FILE_DOCUMENTATION.txt
+  (This file) Standalone repository registry outlining the specific responsibility and
+  boundary of every file in the project.
+
+--------------------------------------------------------------------------------
+2. DATA & POLICY SCHEMAS (data/)
+--------------------------------------------------------------------------------
+- data/authority-policy.json
+  Declarative JSON data schema encoding Calder County Authority Policy ACA-2026/1.
+  Contains Section 2 permitted actions (2.1 to 2.7) and Section 3 strict prohibitions
+  (3.1 to 3.8 match triggers). 
+
+- data/authority-policy.md
+  Raw textual copy of Calder County Authority Policy ACA-2026/1 for human reference.
+
+- data/referral-queue.json
+  Intake queue containing 12 overnight resident referrals (RF-2026-0412 through RF-2026-0423)
+  with referral IDs, resident references, sources, requested actions, urgency, and summaries.
+
+--------------------------------------------------------------------------------
+3. MOCK BACKEND SERVICES (services/)
+--------------------------------------------------------------------------------
+- services/history_service.py
+  Standalone HTTP server running on standard library `ThreadingHTTPServer` (default port 8083).
+  Provides RESTful endpoints (`/health`, `/residents/<ref>`, `/residents/<ref>/household`, 
+  `/residents/<ref>/events`) simulating the county resident database.
+
+- services/_history_data.json
+  Mock database store containing historical resident records, household compositions, monthly
+  award amounts, and prior case timeline events.
+
+--------------------------------------------------------------------------------
+4. AGENT APPLICATION CORE (src/)
+--------------------------------------------------------------------------------
+- src/client.py
+  `ResidentHistoryClient`: Standard library (`urllib.request`) HTTP transport client for querying
+  the Resident History API. Implements strictly read-only HTTP GET requests, connection timeouts,
+  and robust 404/500/unreachable status handling.
+
+- src/guardrail.py
+  `PolicyGuardrailEngine`: Hard policy interceptor engine enforcing ACA-2026/1. Evaluates intake
+  referrals against Section 3 prohibitions pre-execution, returning a `GuardrailDecision`
+  (permitted vs blocked & escalated).
+
+- src/main.py
+  Intake loop orchestrator (`run_caseworker_morning`). Executes the 3-step morning sequence
+  (Read Queue -> Pull History -> Guardrail Triage/Escalate) across all 12 referrals with full
+  stdout execution tracing.
