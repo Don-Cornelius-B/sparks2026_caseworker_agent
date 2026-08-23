@@ -26,9 +26,15 @@ Policy: ACA-2026/1 (Amended by ACA-2026/2)
     structuring, standard library implementation, and test suite creation.
 
 • FILE_DOCUMENTATION.txt
-  - Role: Standalone repository index.
+  - Role: Standalone repository index and component registry.
   - Contents: Complete registry describing the responsibility, boundaries, and
     dependencies of every file in the project.
+
+• testing.txt
+  - Role: System setup guide, file testing manual, and workflow wireframe diagram.
+  - Contents: Step-by-step setup instructions, exact command lines for testing
+    every file in the codebase, ASCII wireframe workflow diagram, and one-liner
+    full system verification scripts.
 
 • .gitignore
   - Role: Git configuration.
@@ -72,9 +78,6 @@ Policy: ACA-2026/1 (Amended by ACA-2026/2)
 
 4. CORE APPLICATION LOGIC (src/)
 --------------------------------------------------------------------------------
-• src/__init__.py
-  - Role: Python package initialization marker.
-
 • src/client.py (ResidentHistoryClient)
   - Role: Safe HTTP transport client.
   - Boundaries: Only implements read operations (GET). Contains no POST/PUT/DELETE
@@ -94,14 +97,11 @@ Policy: ACA-2026/1 (Amended by ACA-2026/2)
   - Workflow: Executes the 3-step morning intake loop across all 12 queue items:
       1. Fetch resident record from port 8083 service
       2. Intercept via guardrail engine
-      3. Emit Permitted triage drafts, Caseworker Hand-offs, or Supervisor Escalations
+      3. Emit 3-way branching decisions: Permitted triage drafts, Caseworker Hand-offs (Sec 3.9), or Supervisor Escalations (Sec 3.1-3.8)
 
 
 5. AUTOMATED TEST SUITE (tests/)
 --------------------------------------------------------------------------------
-• tests/__init__.py
-  - Role: Test package initialization marker.
-
 • tests/test_guardrails.py (TestPolicyGuardrailEngine)
   - Role: Zero-dependency unit test suite using built-in unittest framework.
   - Coverage: Adult-only permitted triage (Sec 2.4), award suspension interception

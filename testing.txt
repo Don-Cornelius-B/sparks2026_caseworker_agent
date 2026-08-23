@@ -1,0 +1,340 @@
+================================================================================
+CALDER COUNTY CASEWORKER ASSISTANT — ENVIRONMENT SETUP & FILE TESTING MANUAL
+================================================================================
+Project: sparks2026_caseworker_agent
+Policy: ACA-2026/1 (Amended by ACA-2026/2)
+Execution Engine: Python 3.10+ Standard Library (Zero Third-Party Dependencies)
+================================================================================
+
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. SYSTEM PREREQUISITES & REPOSITORY SETUP
+2. WIREFRAME WORKFLOW DIAGRAM (INPUTS -> PROCESSING -> OUTPUTS)
+3. STEP-BY-STEP COMMAND LINE MANUAL FOR TESTING EVERY FILE
+   3.1. Testing Mock Backend Service (services/history_service.py & _history_data.json)
+   3.2. Testing Data Schemas & Files (data/*)
+   3.3. Testing Read-Only HTTP Transport Client (src/client.py)
+   3.4. Testing Policy Guardrail Interceptor (src/guardrail.py)
+   3.5. Testing CLI Intake Orchestrator (src/main.py)
+   3.6. Testing Unit Test Suite (tests/test_guardrails.py)
+   3.7. Testing Documentation & Compliance Files (README.md, DECISIONS.md, etc.)
+4. AUTOMATED FULL SYSTEM VERIFICATION SUITE
+
+================================================================================
+1. SYSTEM PREREQUISITES & REPOSITORY SETUP
+================================================================================
+
+Prerequisites:
+- Python 3.10 or higher installed (Python 3.11 or 3.12 recommended).
+- Git installed.
+- Standard Library environment (No `pip install`, virtual environment, or external packages required).
+
+Repository Setup Commands:
+
+  # Step 1: Clone the repository (if not already local)
+  git clone https://github.com/Don-Cornelius-B/sparks2026_caseworker_agent.git
+
+  # Step 2: Navigate into the repository directory
+  cd sparks2026_caseworker_agent
+
+  # Step 3: Verify Python version (must be >= 3.10)
+  python --version
+
+
+================================================================================
+2. WIREFRAME WORKFLOW DIAGRAM (INPUTS -> PROCESSING -> OUTPUTS)
+================================================================================
+
++------------------------------------------------------------------------------+
+|                              INPUT LAYER                                     |
++------------------------------------+-----------------------------------------+
+|                                    |                                         |
+|  [data/referral-queue.json]        |  [data/authority-policy.json]           |
+|  +------------------------------+  |  +-----------------------------------+  |
+|  | 12 Overnight Referral Items  |  |  | ACA-2026/1 & ACA-2026/2 Rules     |  |
+|  | - referral_id (e.g. RF-0412) |  |  | - Sec 2: Permitted Actions       |  |
+|  | - resident_ref (e.g. R-20500)|  |  | - Sec 3.1-3.8: Mutations Blocked |  |
+|  | - requested_action           |  |  | - Sec 3.9: Minor Safeguarding    |  |
+|  | - summary & source           |  |  +-----------------------------------+  |
+|  +--------------+---------------+                                            |
+|                 |                                                            |
++-----------------|------------------------------------------------------------+
+                  |
+                  v
++------------------------------------------------------------------------------+
+|                          MOCK DATA & SERVICE LAYER                           |
++------------------------------------------------------------------------------+
+|                                                                              |
+|  [services/_history_data.json] ----> [services/history_service.py]           |
+|  +---------------------------+       +------------------------------------+  |
+|  | 12 Resident Profiles      |       | ThreadingHTTPServer on :8083       |  |
+|  | - demographics & household|       | Endpoints:                         |  |
+|  | - monthly award & code    |       |   GET /health                      |  |
+|  | - historical case events  |       |   GET /residents/<ref>             |  |
+|  +---------------------------+       +-----------------+------------------+  |
+|                                                        |                     |
++--------------------------------------------------------|---------------------+
+                                                         | HTTP (Port 8083)
+                                                         v
++------------------------------------------------------------------------------+
+|                        APPLICATION LOGIC LAYER (src/)                        |
++------------------------------------------------------------------------------+
+|                                                                              |
+|  +------------------------------------------------------------------------+  |
+|  | [src/main.py] CLI Intake Loop Orchestrator                              |  |
+|  +------------------------------------+-----------------------------------+  |
+|                                       |                                      |
+|            +--------------------------+--------------------------+           |
+|            | Step 1: Query History                               |           |
+|            v                                                     v           |
+|  [src/client.py] Read-Only HTTP Transport             [src/guardrail.py]     |
+|  +------------------------------------+               Deterministic Engine   |
+|  | ResidentHistoryClient (urllib)     |               +-------------------+  |
+|  | Performs GET /residents/<ref>      |-------------->| Policy Guardrail  |  |
+|  | Structural Read-Only Protection    |  History Data | Pre-Execution Gate|  |
+|  +------------------------------------+               +---------+---------+  |
+|                                                                 |            |
+|                                                                 v            |
+|                                                       Step 2: Intercept      |
++-----------------------------------------------------------------|------------+
+                                                                  |
+                                                                  v
++------------------------------------------------------------------------------+
+|                           TRIAGE OUTPUT BRANCHING                            |
++------------------------------------------------------------------------------+
+|                                                                              |
+|   +--------------------------+-------------------------+                     |
+|   |                          |                         |                     |
+|   v (Cleared Sec 2.4)        v (Minor / Missing Data)  v (Mutation Sec 3)    |
+| +---------------------+   +---------------------+   +---------------------+  |
+| | PERMITTED DRAFT     |   | CASEWORKER HAND-OFF |   | SUPERVISOR          |  |
+| | TRIAGE PROPOSAL     |   | PACKAGE (Sec 3.9)   |   | ESCALATION PACKAGE  |  |
+| +---------------------+   +---------------------+   +---------------------+  |
+| | - Non-binding draft |   | - No draft note     |   | - Mutation blocked  |  |
+| | - Summary of award  |   | - Safeguarding flag |   | - Clause cited      |  |
+| | - Event tally       |   | - Context preserved |   | - Action required   |  |
+| | - Ready for review  |   | - Human judgment    |   | - Human override    |  |
+| +----------+----------+   +----------+----------+   +----------+----------+  |
+|            |                         |                         |             |
+|            +-------------------------+-------------------------+             |
+|                                      |                                       |
+|                                      v                                       |
+|                  +---------------------------------------+                   |
+|                  | Real-Time Execution Trace (stdout)    |                   |
+|                  | Summary: 6 Permitted | 3 Hand-offs    |                   |
+|                  |          3 Escalations                |                   |
+|                  +---------------------------------------+                   |
++------------------------------------------------------------------------------+
+
+
+================================================================================
+3. STEP-BY-STEP COMMAND LINE MANUAL FOR TESTING EVERY FILE
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1. Testing Mock Backend Service Layer (services/history_service.py)
+--------------------------------------------------------------------------------
+File 1: services/history_service.py
+File 2: services/_history_data.json
+
+Purpose:
+Validates that the HTTP REST microservice starts correctly, binds to port 8083,
+parses the mock JSON database, and responds to HTTP requests without dependencies.
+
+Step 1: Start the service in Terminal 1
+  python services/history_service.py --port 8083
+
+  Expected Terminal Output:
+  Resident History API on http://127.0.0.1:8083  (12 residents)
+
+Step 2: Test Health Endpoint (in Terminal 2 or PowerShell/cmd)
+  python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8083/health').read().decode())"
+
+  Expected Output:
+  {"status": "ok", "service": "resident-history", "records": 12}
+
+Step 3: Test Resident History Profile Endpoint (R-20500)
+  python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8083/residents/R-20500').read().decode())"
+
+  Expected Output:
+  JSON object containing resident reference R-20500, district 'Ash Hill', award 988.04, household, and events.
+
+Step 4: Test Household Sub-Endpoint (R-20500)
+  python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8083/residents/R-20500/household').read().decode())"
+
+Step 5: Test Non-Existent Resident Endpoint (404 Handling)
+  python -c "import urllib.request, urllib.error; getattr(urllib.error, 'HTTPError'); print(urllib.request.urlopen('http://127.0.0.1:8083/residents/INVALID-999').read().decode())"
+
+  Expected Output:
+  HTTP 404 response payload: {"error": "not_found", "resident_ref": "INVALID-999"}
+
+
+--------------------------------------------------------------------------------
+3.2. Testing Data Schemas & Data Files (data/*)
+--------------------------------------------------------------------------------
+File 1: data/authority-policy.json
+File 2: data/referral-queue.json
+File 3: data/authority-policy.md
+
+Purpose:
+Ensures all JSON configuration files are syntactically valid and conform to the expected schemas.
+
+Command 1: Validate syntax of authority-policy.json
+  python -m json.tool data/authority-policy.json > NUL && echo "authority-policy.json: VALID"
+
+Command 2: Validate syntax of referral-queue.json
+  python -m json.tool data/referral-queue.json > NUL && echo "referral-queue.json: VALID"
+
+Command 3: Validate referral-queue count and structure using Python
+  python -c "import json; q = json.load(open('data/referral-queue.json')); print(f'Loaded {len(q)} referrals successfully.')"
+
+  Expected Output:
+  Loaded 12 referrals successfully.
+
+Command 4: Inspect Policy Authority Clauses
+  python -c "import json; p = json.load(open('data/authority-policy.json')); print('Policy Ref:', p['policy_reference']); print('Restrictions:', len(p['section_3_restrictions']))"
+
+  Expected Output:
+  Policy Ref: ACA-2026/1 (Amended by ACA-2026/2)
+  Restrictions: 9
+
+
+--------------------------------------------------------------------------------
+3.3. Testing Read-Only HTTP Transport Client (src/client.py)
+--------------------------------------------------------------------------------
+File: src/client.py (ResidentHistoryClient)
+
+Purpose:
+Verifies that the HTTP client retrieves data from port 8083 safely, returns structured
+Python dictionaries, handles HTTP error codes gracefully, and contains no mutation methods.
+
+Command 1: Execute direct Python client test
+  python -c "from src.client import ResidentHistoryClient; c = ResidentHistoryClient(); print('Health:', c.check_health()); print('Resident R-20500:', c.get_resident('R-20500')['resident_ref'])"
+
+  Expected Output:
+  Health: {'status': 'ok', 'service': 'resident-history', 'records': 12}
+  Resident R-20500: R-20500
+
+Command 2: Test 404 Error handling in transport client
+  python -c "from src.client import ResidentHistoryClient; c = ResidentHistoryClient(); print('404 Test:', c.get_resident('R-NONEXISTENT'))"
+
+  Expected Output:
+  404 Test: {'error': 'not_found', 'resident_ref': 'R-NONEXISTENT', 'status_code': 404}
+
+Command 3: Verify Structural Incapability (Assert no write methods exist)
+  python -c "from src.client import ResidentHistoryClient; methods = [m for m in dir(ResidentHistoryClient) if not m.startswith('_')]; print('Client Methods:', methods); assert not any(m in methods for m in ['post', 'put', 'delete', 'patch', 'update', 'mutate']), 'SECURITY VIOLATION: Write method found!'"
+
+  Expected Output:
+  Client Methods: ['check_health', 'get_resident']
+
+
+--------------------------------------------------------------------------------
+3.4. Testing Policy Guardrail Interceptor Engine (src/guardrail.py)
+--------------------------------------------------------------------------------
+File: src/guardrail.py (PolicyGuardrailEngine)
+
+Purpose:
+Verifies the deterministic interception logic across all three evaluation paths:
+1. Permitted adult-only triage proposal (Sec 2.4)
+2. Supervisor escalation for prohibited mutations (Sec 3.1 - 3.8)
+3. Caseworker hand-off for minor safeguarding (Sec 3.9) or missing household data (Sec 5.2/6.1)
+
+Command 1: Test Permitted Adult Referral Evaluation
+  python -c "from src.guardrail import PolicyGuardrailEngine; e = PolicyGuardrailEngine(); ref = {'requested_action': 'Review award', 'summary': 'Routine review'}; hist = {'household': [{'date_of_birth': '1985-01-01'}]}; d = e.evaluate(ref, hist); print('Permitted:', d.is_permitted, '| Clause:', d.clause)"
+
+  Expected Output:
+  Permitted: True | Clause: Section 2.4
+
+Command 2: Test Section 3.2 Award Suspension Interception (Supervisor Escalation)
+  python -c "from src.guardrail import PolicyGuardrailEngine; e = PolicyGuardrailEngine(); ref = {'requested_action': 'Suspend assistance pending investigation', 'summary': 'Fraud report'}; hist = {'household': [{'date_of_birth': '1985-01-01'}]}; d = e.evaluate(ref, hist); print('Escalation:', d.requires_escalation, '| Clause:', d.clause)"
+
+  Expected Output:
+  Escalation: True | Clause: Section 3.2
+
+Command 3: Test Section 3.4 Payment Details Interception (Supervisor Escalation)
+  python -c "from src.guardrail import PolicyGuardrailEngine; e = PolicyGuardrailEngine(); ref = {'requested_action': 'Update payment details', 'summary': 'Bank change'}; hist = {'household': [{'date_of_birth': '1985-01-01'}]}; d = e.evaluate(ref, hist); print('Escalation:', d.requires_escalation, '| Clause:', d.clause)"
+
+  Expected Output:
+  Escalation: True | Clause: Section 3.4
+
+Command 4: Test Section 3.9 Minor Safeguarding Interception (Caseworker Hand-off)
+  python -c "from src.guardrail import PolicyGuardrailEngine; e = PolicyGuardrailEngine(); ref = {'requested_action': 'Review award', 'summary': 'Child in house'}; hist = {'household': [{'name': 'Child', 'date_of_birth': '2020-05-01'}]}; d = e.evaluate(ref, hist); print('Hand-off:', d.is_handoff, '| Clause:', d.clause)"
+
+  Expected Output:
+  Hand-off: True | Clause: Section 3.9
+
+Command 5: Test Missing Household Composition Fallback (Sec 5.2/6.1 Hand-off)
+  python -c "from src.guardrail import PolicyGuardrailEngine; e = PolicyGuardrailEngine(); ref = {'requested_action': 'Review award', 'summary': 'Address check'}; d = e.evaluate(ref, None); print('Hand-off:', d.is_handoff, '| Clause:', d.clause)"
+
+  Expected Output:
+  Hand-off: True | Clause: Section 3.9 (via 5.2 / 6.1)
+
+
+--------------------------------------------------------------------------------
+3.5. Testing CLI Intake Loop Orchestrator (src/main.py)
+--------------------------------------------------------------------------------
+File: src/main.py (run_caseworker_morning)
+
+Purpose:
+Executes the full 3-step morning intake loop across all 12 overnight referrals,
+generating execution traces and summary statistics.
+
+Prerequisite: Ensure `history_service.py` is running on port 8083.
+
+Command 1: Run the full morning intake loop
+  python -m src.main
+
+  Expected Output Summary:
+  ================================================================================
+    MORNING SEQUENCE COMPLETED
+    Total Processed: 12
+    • Permitted Triage Proposals: 6
+    • Caseworker Hand-offs (Sec 3.9): 3
+    • Supervisor Escalations (Sec 3.1-3.8): 3
+  ================================================================================
+
+
+--------------------------------------------------------------------------------
+3.6. Testing Unit Test Suite (tests/test_guardrails.py)
+--------------------------------------------------------------------------------
+File: tests/test_guardrails.py (TestPolicyGuardrailEngine)
+
+Purpose:
+Executes the automated zero-dependency unit test suite using Python's standard `unittest` framework.
+
+Command 1: Run unit tests via unittest discovery
+  python -m unittest discover tests
+
+Command 2: Run unit test script directly
+  python tests/test_guardrails.py
+
+  Expected Output:
+  .....
+  ----------------------------------------------------------------------
+  Ran 5 tests in 0.016s
+
+  OK
+
+
+--------------------------------------------------------------------------------
+3.7. Testing Documentation & Governance Files
+--------------------------------------------------------------------------------
+Files: README.md, DECISIONS.md, AI-USAGE.md, FILE_DOCUMENTATION.txt, .gitignore
+
+Purpose:
+Verifies that documentation files exist, are non-empty, and contain accurate project details.
+
+Command 1: Check document line counts and byte sizes
+  python -c "import os; docs = ['README.md', 'DECISIONS.md', 'AI-USAGE.md', 'FILE_DOCUMENTATION.txt', 'testing.txt', '.gitignore']; [print(f'{f}: {os.path.getsize(f)} bytes') for f in docs if os.path.exists(f)]"
+
+
+================================================================================
+4. AUTOMATED FULL SYSTEM VERIFICATION SUITE
+================================================================================
+
+To run a complete end-to-end sanity check of all files in a single terminal command line, run the following Python one-liner script:
+
+Command Line One-Liner:
+  python -c "import unittest, json, os; from src.client import ResidentHistoryClient; from src.guardrail import PolicyGuardrailEngine; print('[1/4] Checking Data Files...'); assert os.path.exists('data/authority-policy.json') and os.path.exists('data/referral-queue.json'); print('[2/4] Testing Policy Engine...'); g = PolicyGuardrailEngine(); assert g.evaluate({'requested_action': 'suspend'}).requires_escalation; print('[3/4] Testing History API Client...'); c = ResidentHistoryClient(); print('      API Status:', c.check_health().get('status')); print('[4/4] Running Unit Tests...'); loader = unittest.TestLoader(); suite = loader.discover('tests'); runner = unittest.TextTestRunner(); result = runner.run(suite); assert result.wasSuccessful(), 'Tests failed!'; print('\n[SUCCESS] ALL SYSTEM VERIFICATION CHECKS PASSED!')"
+
+================================================================================

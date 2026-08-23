@@ -1,7 +1,7 @@
 # Calder County Automated Caseworker Assistant
 
 > **Problem Track 5:** The Caseworker's Morning (Agentic AI / Guardrails)  
-> **Policy Reference:** Calder County Authority Policy ACA-2026/1  
+> **Policy Reference:** Calder County Authority Policy ACA-2026/1 (Amended by ACA-2026/2)  
 > **Execution Environment:** Python 3.10+ (Standard Library Only — Zero Third-Party Dependencies)
 
 ---
@@ -17,9 +17,10 @@ In Calder County Social Services, caseworkers spend up to 40 minutes every morni
 ### Why Deterministic Guardrails Are Necessary
 While automating this sequence saves hundreds of staff hours annually, public sector casework carries strict legal and ethical boundaries. Generative AI models and LLM agents are inherently non-deterministic—they can suffer from hallucinations, prompt injections, or over-helpful behavior that attempts unauthorized actions.
 
-Under **Calder County Authority Policy ACA-2026/1**:
+Under **Calder County Authority Policy ACA-2026/1** (as amended by **ACA-2026/2**):
 - **Strictly Prohibited Mutations:** AI systems must **never** alter benefit entitlement amounts, suspend or terminate awards (even upon fraud allegations), execute payments, modify resident bank details, or send unapproved communications to residents.
 - **Hard Code Interception:** Safety guardrails cannot rely on "soft" LLM system prompts. They must be enforced as **deterministic approval gates in application code** that evaluate requests before any downstream processing occurs.
+- **Safeguarding Hand-Off (Section 3.9):** If a referral concerns a household with a minor under age 18—or if household composition cannot be verified from records (Sections 5.2 & 6.1)—the assistant must **halt triage drafting** and hand off the case directly to a human caseworker.
 - **Default-to-Escalate (Section 6.1):** Any action engaging a Section 3 restriction—or any unclassified, high-risk request—must halt automated processing immediately and generate a structured escalation package for a human supervisor.
 - **Day 2 Policy Resilience:** Policy rules are decoupled from application logic into a declarative JSON schema ([`data/authority-policy.json`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/data/authority-policy.json)). When policy amendments occur, rules can be updated dynamically without touching or refactoring codebase logic.
 
@@ -27,7 +28,7 @@ Under **Calder County Authority Policy ACA-2026/1**:
 
 ## Compliance with "The Floor" Requirements
 
-This implementation satisfies all five mandatory criteria established for Problem Track 5:
+This implementation satisfies all mandatory criteria established for Problem Track 5:
 
 | Criterion | Requirement Summary | Implementation & Verification Evidence | Status |
 | :--- | :--- | :--- | :---: |
@@ -35,7 +36,7 @@ This implementation satisfies all five mandatory criteria established for Proble
 | **2. Visible Execution Trace** | Real-time `stdout` trace inspectable by human supervisors. | CLI outputs structured logs per referral showing step-by-step API responses, guardrail checks, and decisions. | ✅ PASS |
 | **3. Hard Code Approval Gate** | Interceptor prevents irreversible mutations pre-execution. | [`src/guardrail.py`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/src/guardrail.py) intercepts referrals before processing; [`src/client.py`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/src/client.py) lacks write HTTP methods. | ✅ PASS |
 | **4. Refusal & Escalation** | Out-of-authority items are blocked and escalated without queue crash. | RF-2026-0415 (fraud suspension), RF-2026-0422 (reinstatement), and RF-2026-0423 (banking update) are safely escalated. | ✅ PASS |
-| **5. Clean Clone Execution** | Zero `pip` dependencies; standard library Python 3.10+ only. | Uses standard Python modules (`json`, `urllib`, `dataclasses`, `http.server`, `argparse`). | ✅ PASS |
+| **5. Clean Clone Execution** | Zero `pip` dependencies; standard library Python 3.10+ only. | Uses standard Python modules (`json`, `urllib`, `dataclasses`, `http.server`, `argparse`, `unittest`). | ✅ PASS |
 
 ---
 
@@ -56,10 +57,12 @@ flowchart TD
     E --> Decision{"Policy Check\nOutcome"}
     
     Decision -->|PERMITTED\n(Section 2.4)| Step3A["Step 3A: Draft Non-Binding Triage Proposal"]
-    Decision -->|RESTRICTED\n(Section 3.1 - 3.8)| Step3B["Step 3B: Block & Generate Supervisor Escalation Package"]
+    Decision -->|CASEWORKER HAND-OFF\n(Section 3.9 Safeguarding)| Step3B["Step 3B: Hand-Off Case Context (No Draft Note)"]
+    Decision -->|SUPERVISOR ESCALATION\n(Section 3.1 - 3.8)| Step3C["Step 3C: Block & Generate Supervisor Escalation Package"]
     
     Step3A --> G["Caseworker Inspection Log (stdout)"]
     Step3B --> G
+    Step3C --> G
 ```
 
 ### Component Responsibility Matrix
@@ -70,8 +73,9 @@ flowchart TD
 | [`data/referral-queue.json`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/data/referral-queue.json) | **Intake Queue Dataset:** Contains 12 overnight intake referrals (RF-2026-0412 through RF-2026-0423). | Mock intake buffer representing overnight resident communications. |
 | [`services/history_service.py`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/services/history_service.py) | **Mock History API Server:** Standalone HTTP server (`ThreadingHTTPServer`) running on port 8083. | Simulates county resident backend database (`/residents/<ref>`). |
 | [`src/client.py`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/src/client.py) | **HTTP Transport Client:** `ResidentHistoryClient` utilizing standard library `urllib.request`. | **Read-Only Boundary:** Implements HTTP `GET` only; zero write methods exist. |
-| [`src/guardrail.py`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/src/guardrail.py) | **Deterministic Guardrail Engine:** `PolicyGuardrailEngine` evaluating requests against policy rules pre-execution. | Hard code approval gate intercepting out-of-authority actions. |
+| [`src/guardrail.py`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/src/guardrail.py) | **Deterministic Guardrail Engine:** `PolicyGuardrailEngine` evaluating requests against policy rules pre-execution. | Hard code approval gate enforcing 3-way triage branching. |
 | [`src/main.py`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/src/main.py) | **Intake Loop Orchestrator:** Manages the 3-step morning sequence, stdout execution tracing, and fault isolation. | Coordinates queue iteration, error handling, and terminal output. |
+| [`testing.txt`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/testing.txt) | **Setup & Testing Manual:** Wireframe workflow diagram and step-by-step test commands for every file. | Complete environment setup guide and file-by-file test reference. |
 | [`FILE_DOCUMENTATION.txt`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/FILE_DOCUMENTATION.txt) | **Standalone File Registry:** Provides complete file role maps for clean-clone code audits. | Repository inventory and structural boundary documentation. |
 | [`DECISIONS.md`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/DECISIONS.md) | **Decision Log & Incapability Spec:** Records architectural choices and structural incapability declarations. | Audit trail of design choices and safety proofs. |
 | [`AI-USAGE.md`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/AI-USAGE.md) | **AI Disclosure Log:** Documents Gemini AI assistant usage during system development. | Hackathon governance and compliance tracking. |
@@ -101,11 +105,18 @@ Open Terminal 2 and run the intake loop orchestrator:
 python -m src.main
 ```
 
+#### Step 3: Run the Automated Unit Test Suite
+```bash
+python -m unittest discover tests
+```
+
+> **For complete file-by-file testing command lines and a wireframe workflow diagram, consult [`testing.txt`](file:///d:/Don/GithubClones/sparks2026_caseworker_agent/testing.txt).**
+
 #### Sample Execution Trace Output Excerpt
 ```text
 ================================================================================
   CALDER COUNTY CASEWORKER ASSISTANT — MORNING TRIAGE RUNNER
-  Policy Reference: ACA-2026/1 | Engine Mode: Deterministic Guardrails
+  Policy: ACA-2026/1 (Amended by ACA-2026/2) | Mode: Deterministic Guardrails
 ================================================================================
 [*] Loaded 12 overnight referrals for processing.
 
@@ -115,7 +126,7 @@ python -m src.main
   Requested Action: Review award
   Summary: Resident reports rent arrears following reduction in hours. Requests review of award.
   -> [Step 1: History API] Fetching record for R-20500...
-     [+] History retrieved: District=Ash Hill, Award=£988.04/mo (HSP-A), Events=4
+     [+] History retrieved: District=Ash Hill, Award=£988.04/mo (HSP-A), Members=2, Events=4
   -> [Step 2: Guardrail Gate] Checking authority policy boundaries...
      [✅ PERMITTED] Cleared under Section 2.4
   -> [Step 3: Output] Drafted Caseworker Triage Proposal:
@@ -129,19 +140,37 @@ python -m src.main
   Requested Action: Suspend assistance pending investigation
   Summary: Anonymous report alleging undeclared employment. Unit requests assistance be suspended pending investigation.
   -> [Step 1: History API] Fetching record for R-20521...
-     [+] History retrieved: District=Ash Hill, Award=£808.52/mo (HSP-B), Events=4
+     [+] History retrieved: District=Ash Hill, Award=£808.52/mo (HSP-B), Members=1, Events=4
   -> [Step 2: Guardrail Gate] Checking authority policy boundaries...
-     [❌ BLOCKED & ESCALATED] Engages Section 3.2
-     Reason: Action 'Suspend assistance pending investigation' engages Section 3.2 (Suspension, termination, or reinstatement of an award). Trigger matched: 'suspend'.
+     [❌ SUPERVISOR ESCALATION] Engages Section 3.2
+     Reason: Action 'Suspend assistance pending investigation' engages Section 3.2 (Suspension, termination, or reinstatement of an award). Matched trigger: 'suspend'.
   -> [Step 3: Output] Generated Supervisor Escalation Package:
         Action Prevented: Suspend assistance pending investigation
-        Violation Clause: Section 3.2 (Suspension, termination, or reinstatement of an award)
-        Supervisor Action Needed: Review referral context and authorize/reject mutation manually.
+        Policy Clause: Section 3.2 (Suspension, termination, or reinstatement of an award)
+        Required Action: Supervisor must review context and authorize/reject mutation.
+--------------------------------------------------------------------------------
+[5/12] Processing Referral: RF-2026-0416 | Resident: R-20528
+  Source: Health Visitor | Urgency: Standard
+  Requested Action: Review award
+  Summary: New baby in household. Resident asks whether award changes.
+  -> [Step 1: History API] Fetching record for R-20528...
+     [+] History retrieved: District=Ash Hill, Award=£1094.8/mo (HSP-A), Members=2, Events=10
+  -> [Step 2: Guardrail Gate] Checking authority policy boundaries...
+     [🤝 CASEWORKER HAND-OFF] Engages Section 3.9
+     Reason: Household includes a minor (Maria Carver, Age: 3, DOB: 2022-04-20). Requires human caseworker judgment from the outset.
+  -> [Step 3: Output] Generated Caseworker Hand-off Package (No Note Drafted):
+        Safeguarding Flag: Household includes minor under 18 or unverified composition.
+        Preserved Context: District=Ash Hill | Current Award=£1094.8/mo (HSP-A)
+        Household Profile: [{'name': 'Tomas Fowler', 'date_of_birth': '1984-10-01', 'relationship': 'Applicant'}, {'name': 'Maria Carver', 'date_of_birth': '2022-04-20', 'relationship': 'Son/daughter'}]
+        Required Action: Caseworker must exercise direct judgment and draft note manually.
 --------------------------------------------------------------------------------
 ...
 ================================================================================
   MORNING SEQUENCE COMPLETED
-  Total Processed: 12 | Permitted Triaged: 9 | Blocked/Escalated: 3
+  Total Processed: 12
+  • Permitted Triage Proposals: 6
+  • Caseworker Hand-offs (Sec 3.9): 3
+  • Supervisor Escalations (Sec 3.1-3.8): 3
 ================================================================================
 ```
 
@@ -170,22 +199,23 @@ python -m src.main
 │  └───────────────────────────┘         └─────────────────┬─────────────────┘  │
 └──────────────────────────────────────────────────────────┼────────────────────┘
                                                            │
-                                   ┌───────────────────────┴───────────────────────┐
-                                   ▼                                               ▼
-                     ┌───────────────────────────┐                   ┌───────────────────────────┐
-                     │ Kafka: triage.proposals.v1│                   │ Kafka: supervisor.alerts  │
-                     └─────────────┬─────────────┘                   └─────────────┬─────────────┘
-                                   │                                               │
-                                   ▼                                               ▼
-                     ┌───────────────────────────┐                   ┌───────────────────────────┐
-                     │ Caseworker UI Dashboard   │                   │ Supervisor Approval Portal│
-                     └───────────────────────────┘                   └───────────────────────────┘
+                                   ┌───────────────────────┼───────────────────────┐
+                                   │                       │                       │
+                                   ▼                       ▼                       ▼
+                     ┌───────────────────────────┐ ┌───────────────┐ ┌───────────────────────────┐
+                     │ Kafka: triage.proposals.v1│ │ handoffs.v1   │ │ Kafka: supervisor.alerts  │
+                     └─────────────┬─────────────┘ └───────┬───────┘ └─────────────┬─────────────┘
+                                   │                       │                       │
+                                   ▼                       ▼                       ▼
+                     ┌───────────────────────────┐ ┌───────────────┐ ┌───────────────────────────┐
+                     │ Caseworker UI Dashboard   │ │ Duty Officer  │ │ Supervisor Approval Portal│
+                     └───────────────────────────┘ └───────────────┘ └───────────────────────────┘
 ```
 
 1. **Containerization:** Packaged using a lightweight Docker container (`python:3.11-alpine`) running as a non-root user for security isolation.
 2. **Scheduled Batch & Event Orchestration:** Deployed as a Kubernetes `CronJob` firing daily at 06:00 AM, or integrated with an event-driven worker consuming from an enterprise message bus (Apache Kafka / AWS SQS).
 3. **Live System Integration:** Endpoints configured dynamically via environment variables (`RESIDENT_HISTORY_API_URL`), communicating over secure mTLS with OAuth2 Bearer token authentication managed via HashiCorp Vault / AWS Secrets Manager.
-4. **Output Queue Routing:** Permitted draft proposals published to `caseworker.proposals.v1` for caseworker review; escalation packages routed directly to `supervisor.escalations.v1` with webhook notifications to team leads.
+4. **Output Queue Routing:** Permitted draft proposals published to `caseworker.proposals.v1` for caseworker review; minor safeguarding hand-offs routed to `handoffs.v1` for duty officer attention; escalation packages routed directly to `supervisor.escalations.v1` with webhook notifications.
 
 ---
 
@@ -228,7 +258,7 @@ If given additional time to evolve the Calder County Caseworker Assistant, the f
    - *Enhancement:* Implement SHA-256 hash chaining (an append-only cryptographic ledger) for every referral ingest, guardrail evaluation, and generated proposal, creating a legally defensible audit trail compliant with Section 5 audit mandates.
 
 4. **Automated Policy Regression & Diff Testing Suite:**
-   - *Current State:* Manual verification against 12 mock referrals.
+   - *Current State:* Manual verification against 12 mock referrals and 5 unit test cases.
    - *Enhancement:* Build a CI/CD test harness that evaluates updated `authority-policy.json` schema releases against thousands of historical referral edge cases to highlight potential over-blocking or policy leaks prior to production deployment.
 
 ---
@@ -241,16 +271,19 @@ sparks2026_caseworker_agent/
 ├── DECISIONS.md                   # Chronological decision log & Structural Incapability spec
 ├── AI-USAGE.md                    # Hackathon compliance AI disclosure log
 ├── FILE_DOCUMENTATION.txt         # Standalone file inventory and responsibility map
+├── testing.txt                    # Setup manual, file test command lines & wireframe diagram
 ├── .gitignore                     # Git configuration ignoring Python cache files
 ├── data/
-│   ├── authority-policy.json      # Declarative JSON schema for Policy ACA-2026/1
+│   ├── authority-policy.json      # Declarative JSON schema for Policy ACA-2026/1 (Amended by ACA-2026/2)
 │   ├── authority-policy.md        # Raw text policy document for human reference
 │   └── referral-queue.json        # 12 overnight intake referrals
 ├── services/
 │   ├── history_service.py         # Mock Resident History REST API server (port 8083)
 │   └── _history_data.json         # Mock resident database storage
-└── src/
-    ├── client.py                  # Read-only HTTP transport client (urllib)
-    ├── guardrail.py               # PolicyGuardrailEngine pre-execution interceptor
-    └── main.py                    # CLI intake loop orchestrator with trace logging
+├── src/
+│   ├── client.py                  # Read-only HTTP transport client (urllib)
+│   ├── guardrail.py               # PolicyGuardrailEngine pre-execution interceptor
+│   └── main.py                    # CLI intake loop orchestrator with trace logging
+└── tests/
+    └── test_guardrails.py         # Zero-dependency unit test suite (unittest)
 ```

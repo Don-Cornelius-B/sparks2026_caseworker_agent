@@ -8,6 +8,12 @@ def run_caseworker_morning(
     queue_path: str = "data/referral-queue.json",
     policy_path: str = "data/authority-policy.json"
 ):
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
     print("=" * 80)
     print("  CALDER COUNTY CASEWORKER ASSISTANT — MORNING TRIAGE RUNNER")
     print("  Policy: ACA-2026/1 (Amended by ACA-2026/2) | Mode: Deterministic Guardrails")

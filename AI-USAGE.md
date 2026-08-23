@@ -7,6 +7,7 @@ Log Usage:
 1. Architecture & Repository Design:
     -> Structuring decoupled repository boundaries (data/, services/, src/, tests/)
     -> Creating standalone file registry (FILE_DOCUMENTATION.txt)
+    -> Creating a setup & testing manual for repository (testing.txt)
 
 2. Policy & Schema Engineering:
     -> Converting raw ACA-2026/1 Markdown policy into declarative JSON rules (data/authority-policy.json)(this approach led to easy addition of new rules in surprise challenge)
